@@ -6,7 +6,7 @@ email: qibenyu@163.com
 description: "关于前端与设计、黑客与画家 | 黄玄，Web & Mobile Lover，Software Engineer，UX Designer | 这里是 @Hux黄玄 的个人博客，与你一起发现更大的世界。"
 keyword: "qibenyu,齐奔宇"
 url: "https://qby.github.io/qibenyu/"              # your host, for absolute URL
-baseurl: ""                             # for example, '/blog' if your blog hosted on 'host/blog'
+baseurl: "https://qby.github.io/qibenyu/"                             # for example, '/blog' if your blog hosted on 'host/blog'
 
 
 
