@@ -10,7 +10,7 @@
     <meta name="keywords"  content="qibenyu,齐奔宇">
     <meta name="theme-color" content="#000000">
     
-    <title>静默安装APK - Qiby 的博客 | Qibenyu Blog</title>
+    <title>Android Summary - Qiby 的博客 | Qibenyu Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/qibenyu/pwa/manifest.json">
@@ -19,7 +19,7 @@
     <link rel="shortcut icon" href="/qibenyu/img/favicon.ico">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/qibenyu/2017/10/23/install/">
+    <link rel="canonical" href="http://localhost:4000/qibenyu/2017/11/27/summary/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href="/qibenyu/css/bootstrap.min.css">
@@ -177,12 +177,12 @@
                         <a class="tag" href="/qibenyu/tags/#Android" title="Android">Android</a>
                         
                     </div>
-                    <h1>静默安装APK</h1>
+                    <h1>Android Summary</h1>
                     
                     
-                    <h2 class="subheading"></h2>
+                    <h2 class="subheading"> For Interview </h2>
                     
-                    <span class="meta">Posted by Qibenyu on October 23, 2017</span>
+                    <span class="meta">Posted by Qiby on November 27, 2017</span>
                 </div>
             </div>
         </div>
@@ -203,172 +203,221 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h1 id="静默安装">静默安装</h1>
-<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+				<h1 id="summary">summary</h1>
+<h3 id="android-平台架构">Android 平台架构</h3>
+<ol>
+  <li>System App</li>
+  <li>JavaApiFramework</li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>Native C/C++</td>
+          <td>Android Runtime</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>Hardware abstraction layer</li>
+  <li>Linux Kernal</li>
+</ol>
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.content.Context;
-import android.content.pm.IPackageInstallObserver;
-import android.content.pm.PackageManager;
-import android.net.Uri;
-import android.os.Handler;
-import android.os.Message;
+<h3 id="app-启动优化google建议">APP 启动优化Google建议</h3>
+<ul>
+  <li>利用提前展示出来的Window，快速展示出来一个界面，给用户快速反馈的体验；</li>
+  <li>避免在启动时做密集沉重的初始化（Heavy app initialization）；</li>
+  <li>定位问题：避免I/O操作、反序列化、网络操作、布局嵌套等。</li>
+</ul>
 
-import com.letv.android.SuperManagerApplication;
-import com.letv.android.supermanager.util.LogUtil;
-import com.letv.android.supermanager.util.TimerUtil;
-import com.letv.android.supermanager.view.InstallProgress;
+<h3 id="app启动流程">APP启动流程</h3>
+<ol>
+  <li>Launcher startActivitySafely -&gt;Binder-&gt; ActivityManagerService</li>
+  <li>AMS在system_server进程</li>
+  <li>system_server通过Socket方式请求zygote进程 fork一个子进程,即APP进程</li>
+</ol>
 
-import java.io.File;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
+<h3 id="activity注意">Activity注意</h3>
+<h4 id="1-正常生命周期">1. 正常生命周期</h4>
+<p>onStart 和 onResume 都已经显示,但是onStart是显示在后台,还不可交互</p>
 
-public class APkInstaller implements Runnable {
-    private static final String TAG = "APkInstaller";
+<p>onStart和onStop以是否可见回调
+onResume和onPause是已是否在前台回调</p>
 
-    public static final int INSTALL_START = 1;
-    public static final int INSTALLING = 2;
-    public static final int INSTALL_SUCCESS = 3;
-    public static final int INSTALL_FAILD = 4;
-    private int mStatus = INSTALL_START;
+<p>onStop可以做一些回收工作和资源释放</p>
 
-    private Handler mHandler;
-    String mApkPath;
-    String mApkUrl;
-    Context mContext;
+<hr />
+<p>注: 当用户打开新的activity或者回到桌面,回调为 onPause-&gt;onStop,有一种特殊情况,如果新Activity为透明主题,那么当前Activity会回调onStop</p>
 
-    public APkInstaller(Context context, Handler handler, String apkPath) {
-        mContext = context;
-        mHandler = handler;
-        mApkPath = apkPath;
-    }
+<h4 id="2异常生命周期">2.异常生命周期</h4>
+<p>onSaveInstanceState  onRestoreInstanceState
+View中也有onSaveInstanceState和onRestoreInstanceState
+委托机制: 由activity委托Window保存数据,Window委托它上面的ViewGroup,一般是DocorView保存,最后底层容器意义通知子元素来保存数据</p>
 
-    public APkInstaller(Context context, Handler handler, String apkPath, String apkUrl) {
-        mContext = context;
-        mHandler = handler;
-        mApkPath = apkPath;
-        mApkUrl = apkUrl;
-    }
-
-    @Override
-    public void run() {
-        silentInstall();
-    }
-
-
-    /**
-     * 静默安装
-     */
-    private void silentInstall() {
-        try {
-            int flag = 0;
-            Class&lt;PackageManager&gt; pmClass = PackageManager.class;
-            Field INSTALL_REPLACE_EXISTING_Field = null;
-            INSTALL_REPLACE_EXISTING_Field = pmClass.getDeclaredField("INSTALL_REPLACE_EXISTING");
-            INSTALL_REPLACE_EXISTING_Field.setAccessible(true);
-            int INSTALL_REPLACE_EXISTING = (int) INSTALL_REPLACE_EXISTING_Field.get(null);
-            Uri uri = Uri.fromFile(new File(mApkPath));
-            flag |= INSTALL_REPLACE_EXISTING;
-            Method installPackage = pmClass.getDeclaredMethod("installPackage", Uri.class, IPackageInstallObserver.class, int.class, String.class);
-            PackageInstallObserver observer = new PackageInstallObserver();
-            observer.packageInstallstart();
-            installPackage.invoke(SuperManagerApplication.application.getPackageManager(), uri, observer, flag, "com.letv.android.supermanager");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
-
-    /**
-     * 安装回调
-     */
-    private class PackageInstallObserver extends IPackageInstallObserver.Stub {
-        InstallProgress progressView = null;
-
-        public PackageInstallObserver() {
-            progressView = new InstallProgress(mContext);
-            progressView.setOnProgressChangeListener(new InstallProgress.OnProgressChangeListener() {
-                @Override
-                public void onProgressChange(int progress) {
-                    packageInstalling(progress);
-                }
-            });
-        }
-
-
-        public void packageInstallstart() {
-            mStatus = INSTALL_START;
-            progressView.startAnim(INSTALL_START);
-            Message msg = Message.obtain();
-            msg.what = INSTALL_START;
-            msg.obj = mApkUrl;
-            mHandler.sendMessage(msg);
-        }
-
-
-        public void packageInstalling(int progress) {
-            if (mStatus == INSTALL_START) {
-                mStatus = INSTALLING;
-            }
-            if (mStatus == INSTALLING) {
-                Message msg = Message.obtain();
-                msg.what = INSTALLING;
-                msg.arg1 = progress;
-                msg.obj = mApkUrl;
-                mHandler.sendMessage(msg);
-            }
-        }
-
-        public void packageInstalled(String packageName, final int returnCode) {
-            LogUtil.d(TAG, "packageInstalled " + returnCode);
-            if (returnCode == 1) {
-                progressView.setListenerFinishAdapter(new AnimatorListenerAdapter() {
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        //通知安装完成
-                        TimerUtil.delayedRun(400, new Runnable() {
-                            @Override
-                            public void run() {
-                                Message msg = Message.obtain();
-                                msg.what = INSTALL_SUCCESS;
-                                msg.obj = mApkUrl;
-                                mHandler.sendMessage(msg);
-                                LogUtil.d(TAG, "INSTALL_SUCCESS " + returnCode);
-                            }
-                        });
-                    }
-                });
-                progressView.startAnim(INSTALL_SUCCESS);
-            } else {
-                //通知CP此应用安装失败
-                mStatus = INSTALL_FAILD;
-                progressView.startAnim(INSTALL_FAILD);
-                Message msg = Message.obtain();
-                msg.what = INSTALL_FAILD;
-                msg.obj = mApkUrl;
-                mHandler.sendMessage(msg);
-                LogUtil.d(TAG, "INSTALL_FAILD " + returnCode);
-            }
-
-        }
-    }
+<h3 id="android事件分发">Android事件分发</h3>
+<h4 id="传递关系">传递关系</h4>
+<p><img src="http://upload-images.jianshu.io/upload_images/944365-aa8416fc6d2e5ecd.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="enter image description here" /></p>
+<div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>public boolean dispatchTouchEvent(MotionEvent ev) {
+	//代表是否消耗事件
+	boolean consume = false;
+	if(onInterceptToucheEvent(ev)) {
+		//如果onInterceptTouchEvent()返回true则代表当前View拦截了点击事件
+		//则该点击事件则会交给当前View进行处理
+		//即调用onTouchEvent (）方法去处理点击事件
+		consume = onTouchEvent(ev);
+	} else {
+		//如果onInterceptTouchEvent()返回false则代表当前View不拦截点击事件
+		//则该点击事件则会继续传递给它的子元素
+		//子元素的dispatchTouchEvent（）就会被调用，重复上述过程
+		//直到点击事件被最终处理为止
+		consume = child.dispatchTouchEvent(ev);
+	}
 }
 
 </code></pre></div></div>
+
+<h3 id="图片库横向比较">图片库横向比较</h3>
+<p>todo
+—</p>
+<h3 id="软引用弱引用有什么区别">软引用,弱引用有什么区别</h3>
+<p>软引用:SoftReference 当内存足够时不会回收,如果内存控件不足则回收
+<strong>弱引用:WeakReference 相比软引用有更短的生命周期</strong>,当垃圾回收线程扫描他管理的内存区域时,一单发现弱引用就会回收,不过，由于垃圾回收器是一个优先级很低的线程，因此不一定会很快发现那些只具有弱引用的对象。
+<strong>强引用  &gt;  软引用  &gt;  弱引用  &gt;  虚引用</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>引用类型</th>
+      <th>被垃圾回收时间</th>
+      <th>用途</th>
+      <th>生存时间</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>强引用</td>
+      <td>从来不会</td>
+      <td>对象的一般状态</td>
+      <td>JVM停止运行时终止</td>
+    </tr>
+    <tr>
+      <td>软引用</td>
+      <td>在内存不足时</td>
+      <td>对象缓存</td>
+      <td>内存不足时终止</td>
+    </tr>
+    <tr>
+      <td>弱引用</td>
+      <td>在垃圾回收时</td>
+      <td>对象缓存</td>
+      <td>gc运行后终止</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="looper实现原理为什么looperprepare就在当前线程关联了looper对象">Looper实现原理，为什么Looper.prepare()就在当前线程关联了Looper对象</h3>
+
+<h3 id="内存问题">内存问题</h3>
+<ol>
+  <li>使用更轻量级的数据结构
+    <ul>
+      <li>json</li>
+      <li>ArrayMap 
+ <img src="http://hukai.me/images/android_perf_3_arraymap_two_array.png" alt="ArrayMap示例图" /></li>
+      <li>使用SparseBoolMap，SparseIntMap，SparseLongMap，LongSparseMap避免自动装箱</li>
+      <li>避免使用ENUM:Enums often require more than twice as much memory as static constants 枚举类型是常量的两倍内存 (官网)</li>
+    </ul>
+  </li>
+  <li>内存泄露
+    <ul>
+      <li>避免使用异步回调</li>
+      <li>Handler内存泄露</li>
+      <li>单例模式内存泄露</li>
+      <li>资源未关闭</li>
+      <li>监听注册未取消</li>
+    </ul>
+  </li>
+  <li>工具
+    <ul>
+      <li>LeakCanary
+        <h3 id="红黑树">红黑树</h3>
+        <p>本质是二叉查找树</p>
+      </li>
+      <li>若任意节点的左子树不为空,则左子树所有节点的值均小于它的根节点的值</li>
+      <li>若任意节点的右子树不为空,则右子树所有节点的值均大于它的根节点的值</li>
+      <li>任意节点的左右子树也分别为二叉查找树</li>
+      <li>没有重复节点
+时间复杂度为O(log n)</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="fragment">Fragment</h3>
+<h4 id="fragmentpageradapterfragmentpagerstateadapter">FragmentPagerAdapter,FragmentPagerStateAdapter</h4>
+
+<h3 id="解决滑动冲突">解决滑动冲突</h3>
+<ol>
+  <li>外部拦截
+    <div class="highlighter-rouge"><div class="highlight"><pre class="highlight"><code>public boolean onInterceptTouchEvent(MotionEvent event){
+ boolean intercepted = false;
+ switch(event.getAction){
+     case MotionEvent.ACTION_DOWN:{
+         intercepted = false;
+         break;
+     }
+     case MotionEvent.ACTION_MOVE:{
+         if(父容器需要此点击事件){
+             intercepted = true;
+         } else {
+             intercepted = false;
+         }
+         break;
+     }
+     case MotionEvent.ACTION_DOWN:{
+         intercepted = false;
+         break;
+     }
+ }
+ return intercepted;
+}
+</code></pre></div>    </div>
+  </li>
+  <li>内部拦截法</li>
+</ol>
+
+<h3 id="webview">Webview</h3>
+<ol>
+  <li>webview内存泄露问题特别注意：
+Activity退出时在onDestory中释放webview
+mContainer.removeView(mWebView);
+mWebView.setWebChromeClient(null);
+mWebView.setDownloadListener(null);
+mWebView.setWebViewClient(null);
+mWebView.destroy();
+顺序不要搞错，先remove Webview，后做webview的释放，否则会出现内存泄露</li>
+  <li>webview硬件加速,导致页面加载白块,抖动
+设置去掉硬件加速</li>
+</ol>
+
+<h3 id="插件化">插件化</h3>
+<h4 id="代码加载">代码加载</h4>
+<p>使用Java ClassLoader机制,单对于Android来讲,并不是类加载进来就可以使用,很多组件有生命周期.就有了组件生命周期管理</p>
+
+<h4 id="资源加载">资源加载</h4>
+<p>使用AssetManager 中隐藏方法addAssetPath</p>
+
 
 
                 <hr style="visibility: hidden;">
 
                 <ul class="pager">
                     
-                    
-                    <li class="next">
-                        <a href="/qibenyu/2017/11/27/summary/" data-toggle="tooltip" data-placement="top" title="Android Summary">
-                        Next<br>
-                        <span>Android Summary</span>
+                    <li class="previous">
+                        <a href="/qibenyu/2017/10/23/install/" data-toggle="tooltip" data-placement="top" title="静默安装APK">
+                        Previous<br>
+                        <span>静默安装APK</span>
                         </a>
                     </li>
+                    
                     
                 </ul>
 
