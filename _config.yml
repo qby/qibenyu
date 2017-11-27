@@ -6,7 +6,7 @@ email: qibenyu@163.com
 description: ""
 keyword: "qibenyu,齐奔宇"
 url: "https://qby.github.io/qibenyu/"              # your host, for absolute URL
-baseurl: "/qibenyu/"                             # for example, '/blog' if your blog hosted on 'host/blog'
+baseurl: "/qibenyu"                             # for example, '/blog' if your blog hosted on 'host/blog'
 
 
 
