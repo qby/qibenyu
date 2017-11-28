@@ -26,10 +26,10 @@ adb shell top -d 1 | grep com.android.calendar
 在这之后当我把日历切换到后台,CPU使用率掉到了0%~1%的正常值,由此猜想此问题可能页面在绘制的时候造成的问题.
 接下来使用ddms查看了trace log
 
-![Alt text](./img/2017-11-28-1-ScreenShot.png)
+![Alt text](/img/in-post/2017-11-28-1-ScreenShot.png)
 
 哦哦 应该就是这里 被标记红了
 在绘制过程中执行事件过长
-![Alt text](./img/2017-11-28-2-ScreenShot.png)
+![Alt text](/img/in-post/2017-11-28-2-ScreenShot.png)
 
 追到了具体代码发现是推啊sdk广告的问题...那就没办法再追下去了,是时候展现丢锅的技术了.
