@@ -12,12 +12,13 @@ tags:
 
 
 #CPU占用过高分析
+
 接手日历两个多月,感慨一下代码很烂.我的工作多数时间都是在接入广告,为了收入嘛,就是略感无聊.前两天测试报出一个日历静置耗电高的问题
 拿到问题的时候我是蒙的
-Http请求可能耗电,SD卡读写可能耗电,数据库读写,Timer,动画,后台Service 都有可能造成耗电量高.  
+Http请求可能耗电,SD卡读写可能耗电,数据库读写,Timer,动画,后台Service 都有可能造成耗电量高.
 该从什么地方分析呢?
 
-adb shell top -d 1 | grep com.android.calendar
+> adb shell top -d 1 | grep com.android.calendar
 
 日历在前台时 CPU占用竟然高达15%左右.当APP进程的CPU使用率超过1%的时候，都是耗电比较大的了，正常情况下应该处于0%的值，实际上应该是0点几.
 好了就是这里.
