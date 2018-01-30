@@ -1,6 +1,6 @@
 ---
 layout:     post
-title:      "Volley 代码设计原则和设计模式"
+title:      "从Retrofit看Java动态代理"
 subtitle:   ""
 date:       2018-01-16
 author:     "Qiby"
@@ -12,7 +12,7 @@ tags:
 ---
 
 
-#从Retrofit看Java动态代理
+# 从Retrofit看Java动态代理
 
 
 
