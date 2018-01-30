@@ -48,7 +48,7 @@ public class TargetProxy {
 如此就出现了动态代理，动态代理就是要在
 
 动态代理究竟要怎么做？先回想一个静态代理的要素
-1. 代理类中覆盖目标类的方法
+1. 代理类中覆盖目标类的调用契约
 2. 代理类中目标类的实例
 3. 对于目标方法的扩展
 
@@ -111,7 +111,7 @@ public class LoggerHandler implements InvocationHandler {
 
 	proxy.sayHello();
 ```
-`proxy.sayHello();`即为代理调用。可以看见`LoggerHandler`这个扩展方法模板传入了目标类的实例作为参数，`Proxy.newProxyInstance`的方法传入了目标类接口方法和扩展方法模板，最后生成了代理类。
+`proxy.sayHello();`即为代理调用。可以看见`LoggerHandler`这个扩展方法模板传入了目标类的实例作为参数，`Proxy.newProxyInstance`的方法传入了目标类接口的调用契约和扩展方法模板，最后生成了代理类。
 
 动态代理看完了，那么现在来看看Retrofit到底是怎么实现的。
 
